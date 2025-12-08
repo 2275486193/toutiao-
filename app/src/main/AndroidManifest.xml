@@ -10,6 +10,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:name=".ToutiaoApp"
         android:theme="@style/Theme.Toutiao">
         <activity
             android:name=".MainActivity"
@@ -20,6 +21,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- 移除 Compose 预览 Activity，避免误启动到预览页面 -->
+        <activity
+            android:name="androidx.compose.ui.tooling.PreviewActivity"
+            tools:node="remove" />
     </application>
 
 </manifest>
