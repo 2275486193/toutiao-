@@ -40,6 +40,11 @@ import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,18 +63,33 @@ fun HomeScreen(
                 Column(Modifier.padding(padding)) {
                     SearchBar()
                     TabBar()
-                    Box(Modifier.fillMaxSize()) {
-                        when {
-                            state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                            state.feedList.isEmpty() -> Text(
-                                "暂无数据",
-                                Modifier.align(Alignment.Center),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            else -> FeedList(
-                                list = state.feedList,
-                                onLoadMore = { vm.dispatch(HomeIntent.LoadMore) }
-                            )
+                    val refreshState = rememberPullToRefreshState()
+                    val density = LocalDensity.current
+                    val contentOffsetPx = with(density) {
+                        PullToRefreshDefaults.PositionalThreshold.toPx() * refreshState.distanceFraction
+                    }
+                    PullToRefreshBox(
+                        isRefreshing = state.isRefreshing,
+                        onRefresh = { vm.dispatch(HomeIntent.Refresh) },
+                        state = refreshState
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { translationY = contentOffsetPx }
+                        ) {
+                            when {
+                                state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                                state.feedList.isEmpty() -> Text(
+                                    "暂无数据",
+                                    Modifier.align(Alignment.Center),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                else -> FeedList(
+                                    list = state.feedList,
+                                    onLoadMore = { vm.dispatch(HomeIntent.LoadMore) }
+                                )
+                            }
                         }
                     }
                 }
