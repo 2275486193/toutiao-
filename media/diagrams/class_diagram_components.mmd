@@ -1,0 +1,35 @@
+﻿classDiagram
+  class HomeState {
+    +isLoading: Boolean
+    +isRefreshing: Boolean
+    +isLoadingMore: Boolean
+    +feedList: List<FeedItem>
+    +error: String?
+  }
+  class HomeIntent {
+    <<sealed>>
+    +LoadInitial
+    +Refresh
+    +LoadMore
+  }
+  class HomeViewModel {
+    +dispatch(intent)
+    +state: StateFlow<HomeState>
+  }
+  class NewsRepository {
+    +newsFlow(): Flow<List<NewsEntity>>
+    +refresh()
+    +loadMore()
+  }
+  class NewsDao {
+    +getAllNews(): Flow<List<NewsEntity>>
+    +insertAll(list)
+    +clearAll()
+  }
+  class AppDatabase { +newsDao(): NewsDao }
+
+  HomeViewModel --> NewsRepository
+  NewsRepository --> AppDatabase
+  AppDatabase --> NewsDao
+  HomeViewModel --> HomeState
+  HomeViewModel --> HomeIntent

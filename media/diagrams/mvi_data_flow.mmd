@@ -1,0 +1,8 @@
+﻿flowchart TD
+  U[用户/系统意图] --> I[HomeIntent]
+  I --> VM[HomeViewModel]
+  VM -->|写库| Repo[Repository]
+  Repo --> DB[(Room)]
+  DB -->|Flow 推送| VM
+  VM --> S[HomeState]
+  S --> UI[Compose UI]

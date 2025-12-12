@@ -1,0 +1,7 @@
+﻿flowchart TD
+  U[Intent] --> VM[ViewModel]
+  VM -->|副作用: 写库| Repo[Repository]
+  Repo --> DB[(Room)]
+  DB -->|Flow 推送| VM
+  VM --> State[HomeState]
+  State --> UI[Compose UI]
