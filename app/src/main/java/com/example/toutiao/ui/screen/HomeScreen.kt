@@ -57,6 +57,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,15 +187,25 @@ private fun VerticalLazyScrollbar(
 
     val visibleCount = info.visibleItemsInfo.size
     val firstIndex = info.visibleItemsInfo.firstOrNull()?.index ?: 0
-    val fraction = firstIndex.toFloat() / kotlin.math.max(total - visibleCount, 1)
-    val thumbFraction = kotlin.math.max(visibleCount.toFloat() / kotlin.math.max(total.toFloat(), 1f), 0.05f)
+    val targetFraction = firstIndex.toFloat() / kotlin.math.max(total - visibleCount, 1)
+    val fraction by animateFloatAsState(
+        targetValue = targetFraction,
+        animationSpec = tween(durationMillis = 120)
+    )
+    val thumbFraction = 0.12f
+    var isVisible = listState.isScrollInProgress
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 200)
+    )
 
     Box(
         modifier = modifier
             .width(6.dp)
             .drawBehind {
+                if (alpha <= 0f) return@drawBehind
                 drawRoundRect(
-                    color = Color.LightGray.copy(alpha = 0.35f),
+                    color = Color.LightGray.copy(alpha = 0.25f * alpha),
                     topLeft = Offset(0f, 0f),
                     size = Size(size.width, size.height),
                     cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
@@ -201,7 +213,7 @@ private fun VerticalLazyScrollbar(
                 val thumbHeight = size.height * thumbFraction
                 val top = (size.height - thumbHeight) * fraction
                 drawRoundRect(
-                    color = ToutiaoRed.copy(alpha = 0.85f),
+                    color = ToutiaoRed.copy(alpha = 0.65f * alpha),
                     topLeft = Offset(0f, top),
                     size = Size(size.width, thumbHeight),
                     cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
@@ -209,6 +221,7 @@ private fun VerticalLazyScrollbar(
             }
             .pointerInput(total, visibleCount) {
                 detectTapGestures { pos ->
+                    isVisible = true
                     val li = listState.layoutInfo
                     val vCount = li.visibleItemsInfo.size
                     val tCount = li.totalItemsCount
@@ -229,6 +242,7 @@ private fun VerticalLazyScrollbar(
                 var dragAllowed = false
                 detectDragGestures(
                     onDragStart = { start ->
+                        isVisible = true
                         val li = listState.layoutInfo
                         val vCount = li.visibleItemsInfo.size
                         val tCount = li.totalItemsCount
@@ -240,7 +254,7 @@ private fun VerticalLazyScrollbar(
                         val top = (size.height - thumbHeight) * frac
                         dragAllowed = start.y in top..(top + thumbHeight)
                     },
-                    onDragEnd = { dragAllowed = false }
+                    onDragEnd = { dragAllowed = false; isVisible = false }
                 ) { change, _ ->
                     if (!dragAllowed) return@detectDragGestures
                     val li = listState.layoutInfo
