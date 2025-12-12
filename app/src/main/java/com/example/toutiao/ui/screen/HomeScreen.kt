@@ -67,6 +67,7 @@ fun HomeScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var selected by remember { mutableStateOf(0) }
+    val feedListState = rememberLazyListState()
 
     Scaffold(
         topBar = { TopBar() },
@@ -102,7 +103,8 @@ fun HomeScreen(
                                 else -> FeedList(
                                     list = state.feedList,
                                     isLoadingMore = state.isLoadingMore,
-                                    onLoadMore = { vm.dispatch(HomeIntent.LoadMore) }
+                                    onLoadMore = { vm.dispatch(HomeIntent.LoadMore) },
+                                    listState = feedListState
                                 )
                             }
                         }
@@ -129,9 +131,9 @@ fun HomeScreen(
 private fun FeedList(
     list: List<FeedItem>,
     isLoadingMore: Boolean,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    listState: LazyListState
 ) {
-    val listState = rememberLazyListState()
     Box {
         LazyColumn(
             contentPadding = PaddingValues(vertical = 4.dp),
