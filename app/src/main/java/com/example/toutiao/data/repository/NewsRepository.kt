@@ -22,7 +22,7 @@ class NewsRepository @Inject constructor(
     }
 
     suspend fun loadMore() = withContext(Dispatchers.IO) {
-        val more = MockDataSource.generate(10)
+        val more = MockDataSource.generate(20)
         dao.insertAll(more)
     }
 }

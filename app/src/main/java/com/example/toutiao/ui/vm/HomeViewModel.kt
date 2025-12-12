@@ -11,6 +11,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -41,6 +43,10 @@ class HomeViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         feedList = list.map { en ->
+                            val images: List<String> = try {
+                                val type = object : TypeToken<List<String>>() {}.type
+                                Gson().fromJson(en.imageUrls, type)
+                            } catch (_: Exception) { emptyList() }
                             FeedItem(
                                 id = en.id,
                                 type = FeedType.entries[en.type],
@@ -48,7 +54,7 @@ class HomeViewModel @Inject constructor(
                                 source = en.source,
                                 commentCount = en.commentCount,
                                 publishTime = "刚刚",
-                                imageUrls = listOf("https://picsum.photos/200/150?random=${en.id.take(8)}"),
+                                imageUrls = images,
                                 videoDuration = en.videoDuration,
                                 isTop = en.isTop
                             )
@@ -68,8 +74,11 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadMore() {
+        if (_state.value.isLoadingMore) return
         viewModelScope.launch {
+            _state.update { it.copy(isLoadingMore = true) }
             repo.loadMore()
+            _state.update { it.copy(isLoadingMore = false) }
         }
     }
 }

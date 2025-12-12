@@ -32,7 +32,7 @@ data class FeedItem(
 )
 
 @Composable
-fun FeedCard(item: FeedItem, onClose: () -> Unit = {}) {
+fun FeedCard(item: FeedItem, index: Int? = null, onClose: () -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -42,32 +42,32 @@ fun FeedCard(item: FeedItem, onClose: () -> Unit = {}) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         when (item.type) {
-            FeedType.TEXT -> TextCard(item)
-            FeedType.RIGHT_IMG -> RightImgCard(item)
-            FeedType.VIDEO -> VideoCard(item)
-            FeedType.THREE_IMG -> ThreeImgCard(item)
+            FeedType.TEXT -> TextCard(item, index)
+            FeedType.RIGHT_IMG -> RightImgCard(item, index)
+            FeedType.VIDEO -> VideoCard(item, index)
+            FeedType.THREE_IMG -> ThreeImgCard(item, index)
         }
     }
 }
 
 @Composable
-private fun TextCard(item: FeedItem) {
+private fun TextCard(item: FeedItem, index: Int?) {
     Column(Modifier.padding(12.dp)) {
-        Title(item)
+        Title(item, index)
         Spacer(Modifier.height(6.dp))
         Meta(item)
     }
 }
 
 @Composable
-private fun RightImgCard(item: FeedItem) {
+private fun RightImgCard(item: FeedItem, index: Int?) {
     Row(Modifier.padding(12.dp)) {
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = 8.dp)
         ) {
-            Title(item)
+            Title(item, index)
             Spacer(Modifier.height(6.dp))
             Meta(item)
         }
@@ -83,9 +83,9 @@ private fun RightImgCard(item: FeedItem) {
 }
 
 @Composable
-private fun VideoCard(item: FeedItem) {
+private fun VideoCard(item: FeedItem, index: Int?) {
     Column(Modifier.padding(12.dp)) {
-        Title(item)
+        Title(item, index)
         Spacer(Modifier.height(8.dp))
         Box(
             modifier = Modifier
@@ -135,9 +135,9 @@ private fun VideoCard(item: FeedItem) {
 }
 
 @Composable
-private fun ThreeImgCard(item: FeedItem) {
+private fun ThreeImgCard(item: FeedItem, index: Int?) {
     Column(Modifier.padding(12.dp)) {
-        Title(item)
+        Title(item, index)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             item.imageUrls.take(3).forEach { url ->
@@ -158,14 +158,31 @@ private fun ThreeImgCard(item: FeedItem) {
 }
 
 @Composable
-private fun Title(item: FeedItem) {
-    Text(
-        text = item.title,
-        fontSize = 16.sp,
-        fontWeight = FontWeight.Medium,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis
-    )
+private fun Title(item: FeedItem, index: Int?) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (index != null) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Gray.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "#${index}",
+                    fontSize = 12.sp,
+                    color = SecondaryText
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            text = item.title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }
 
 @Composable

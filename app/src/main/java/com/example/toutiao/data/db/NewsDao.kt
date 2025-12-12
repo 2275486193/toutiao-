@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NewsDao {
-    @Query("SELECT * FROM news_table ORDER BY publishTime DESC")
+    @Query("SELECT * FROM news_table ORDER BY rowid ASC")
     fun getAllNews(): Flow<List<NewsEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

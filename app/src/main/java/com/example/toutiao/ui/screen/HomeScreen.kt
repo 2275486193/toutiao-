@@ -3,6 +3,8 @@ package com.example.toutiao.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -10,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -45,6 +48,15 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +99,7 @@ fun HomeScreen(
                                 )
                                 else -> FeedList(
                                     list = state.feedList,
+                                    isLoadingMore = state.isLoadingMore,
                                     onLoadMore = { vm.dispatch(HomeIntent.LoadMore) }
                                 )
                             }
@@ -113,17 +126,151 @@ fun HomeScreen(
 @Composable
 private fun FeedList(
     list: List<FeedItem>,
+    isLoadingMore: Boolean,
     onLoadMore: () -> Unit
 ) {
-    LazyColumn(
-        contentPadding = PaddingValues(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        itemsIndexed(list) { idx, item ->
-            FeedCard(item)
-            if (idx >= list.size - 3) {
-                LaunchedEffect(list.size) { onLoadMore() }
+    val listState = rememberLazyListState()
+    Box {
+        LazyColumn(
+            contentPadding = PaddingValues(vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            state = listState
+        ) {
+            itemsIndexed(list, key = { _, item -> item.id }) { index, item ->
+                FeedCard(item, index + 1)
             }
+            item {
+                LoadMoreFooter(isLoading = isLoadingMore)
+            }
+        }
+        VerticalLazyScrollbar(
+            listState = listState,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .padding(end = 2.dp)
+        )
+    }
+    LaunchedEffect(listState, list.size) {
+        var stableFrames = 0
+        while (true) {
+            val info = listState.layoutInfo
+            val footerIndex = list.size
+            val footerItem = info.visibleItemsInfo.find { it.index == footerIndex }
+            val viewportEnd = info.viewportEndOffset
+            val footerFullyVisible = footerItem != null && (footerItem.offset + footerItem.size) <= viewportEnd
+            if (footerFullyVisible && listState.isScrollInProgress) {
+                stableFrames++
+            } else {
+                stableFrames = 0
+            }
+            if (stableFrames >= 2 && !isLoadingMore && list.isNotEmpty()) {
+                stableFrames = 0
+                onLoadMore()
+            }
+            delay(120)
+        }
+    }
+}
+
+@Composable
+private fun VerticalLazyScrollbar(
+    listState: LazyListState,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    val info = listState.layoutInfo
+    val total = info.totalItemsCount
+    if (total <= 0) return
+
+    val visibleCount = info.visibleItemsInfo.size
+    val firstIndex = info.visibleItemsInfo.firstOrNull()?.index ?: 0
+    val fraction = firstIndex.toFloat() / kotlin.math.max(total - visibleCount, 1)
+    val thumbFraction = kotlin.math.max(visibleCount.toFloat() / kotlin.math.max(total.toFloat(), 1f), 0.05f)
+
+    Box(
+        modifier = modifier
+            .width(6.dp)
+            .drawBehind {
+                drawRoundRect(
+                    color = Color.LightGray.copy(alpha = 0.35f),
+                    topLeft = Offset(0f, 0f),
+                    size = Size(size.width, size.height),
+                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+                )
+                val thumbHeight = size.height * thumbFraction
+                val top = (size.height - thumbHeight) * fraction
+                drawRoundRect(
+                    color = ToutiaoRed.copy(alpha = 0.85f),
+                    topLeft = Offset(0f, top),
+                    size = Size(size.width, thumbHeight),
+                    cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+                )
+            }
+            .pointerInput(total, visibleCount) {
+                detectTapGestures { pos ->
+                    val li = listState.layoutInfo
+                    val vCount = li.visibleItemsInfo.size
+                    val tCount = li.totalItemsCount
+                    if (tCount <= 0 || vCount <= 0) return@detectTapGestures
+                    val first = li.visibleItemsInfo.firstOrNull()?.index ?: 0
+                    val frac = first.toFloat() / kotlin.math.max(tCount - vCount, 1)
+                    val thumbFraction = kotlin.math.max(vCount.toFloat() / kotlin.math.max(tCount.toFloat(), 1f), 0.05f)
+                    val thumbHeight = size.height * thumbFraction
+                    val top = (size.height - thumbHeight) * frac
+                    val insideThumb = pos.y in top..(top + thumbHeight)
+                    if (!insideThumb) return@detectTapGestures
+                    val yFrac = (pos.y / size.height).coerceIn(0f, 1f)
+                    val target = ((tCount - vCount) * yFrac).toInt()
+                    scope.launch { listState.scrollToItem(target) }
+                }
+            }
+            .pointerInput(total, visibleCount) {
+                var dragAllowed = false
+                detectDragGestures(
+                    onDragStart = { start ->
+                        val li = listState.layoutInfo
+                        val vCount = li.visibleItemsInfo.size
+                        val tCount = li.totalItemsCount
+                        if (tCount <= 0 || vCount <= 0) { dragAllowed = false; return@detectDragGestures }
+                        val first = li.visibleItemsInfo.firstOrNull()?.index ?: 0
+                        val frac = first.toFloat() / kotlin.math.max(tCount - vCount, 1)
+                        val thumbFraction = kotlin.math.max(vCount.toFloat() / kotlin.math.max(tCount.toFloat(), 1f), 0.05f)
+                        val thumbHeight = size.height * thumbFraction
+                        val top = (size.height - thumbHeight) * frac
+                        dragAllowed = start.y in top..(top + thumbHeight)
+                    },
+                    onDragEnd = { dragAllowed = false }
+                ) { change, _ ->
+                    if (!dragAllowed) return@detectDragGestures
+                    val li = listState.layoutInfo
+                    val vCount = li.visibleItemsInfo.size
+                    val tCount = li.totalItemsCount
+                    if (tCount <= 0 || vCount <= 0) return@detectDragGestures
+                    val yFrac = (change.position.y / size.height).coerceIn(0f, 1f)
+                    val target = ((tCount - vCount) * yFrac).toInt()
+                    scope.launch { listState.scrollToItem(target) }
+                    change.consume()
+                }
+            }
+    )
+}
+
+@Composable
+private fun LoadMoreFooter(isLoading: Boolean) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("正在加载更多…", style = MaterialTheme.typography.bodySmall)
+        } else {
+            Text("继续上拉加载更多", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
         }
     }
 }
