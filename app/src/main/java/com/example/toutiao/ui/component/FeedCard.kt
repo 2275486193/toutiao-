@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.toutiao.ui.theme.SecondaryText
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.painter.ColorPainter
+import coil.request.ImageRequest
 
 enum class FeedType { TEXT, RIGHT_IMG, VIDEO, THREE_IMG }
 
@@ -72,12 +75,16 @@ private fun RightImgCard(item: FeedItem, index: Int?) {
             Meta(item)
         }
         AsyncImage(
-            model = item.imageUrls.firstOrNull(),
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(item.imageUrls.firstOrNull())
+                .crossfade(true)
+                .build(),
             contentDescription = null,
             modifier = Modifier
                 .size(96.dp, 64.dp)
                 .clip(RoundedCornerShape(4.dp)),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholder = ColorPainter(Color.LightGray)
         )
     }
 }
@@ -95,10 +102,14 @@ private fun VideoCard(item: FeedItem, index: Int?) {
                 .background(Color.LightGray)
         ) {
             AsyncImage(
-                model = item.imageUrls.firstOrNull(),
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(item.imageUrls.firstOrNull())
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = ColorPainter(Color.LightGray)
             )
             // 播放图标
             Box(
@@ -142,13 +153,17 @@ private fun ThreeImgCard(item: FeedItem, index: Int?) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             item.imageUrls.take(3).forEach { url ->
                 AsyncImage(
-                    model = url,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(url)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     modifier = Modifier
                         .weight(1f)
                         .height(80.dp)
                         .clip(RoundedCornerShape(4.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = ColorPainter(Color.LightGray)
                 )
             }
         }

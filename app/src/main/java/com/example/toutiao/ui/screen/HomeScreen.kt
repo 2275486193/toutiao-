@@ -134,6 +134,8 @@ private fun FeedList(
     onLoadMore: () -> Unit,
     listState: LazyListState
 ) {
+    val density = LocalDensity.current
+    val minVisiblePx = with(density) { 32.dp.toPx() }
     Box {
         LazyColumn(
             contentPadding = PaddingValues(vertical = 4.dp),
@@ -155,15 +157,15 @@ private fun FeedList(
                 .padding(end = 2.dp)
         )
     }
-    LaunchedEffect(listState, list.size) {
+    LaunchedEffect(listState, list.size, isLoadingMore) {
         var stableFrames = 0
         while (true) {
             val info = listState.layoutInfo
             val footerIndex = list.size
             val footerItem = info.visibleItemsInfo.find { it.index == footerIndex }
             val viewportEnd = info.viewportEndOffset
-            val footerFullyVisible = footerItem != null && (footerItem.offset + footerItem.size) <= viewportEnd
-            if (footerFullyVisible && listState.isScrollInProgress) {
+            val footerVisible = footerItem != null && (viewportEnd - footerItem.offset) >= minVisiblePx
+            if (footerVisible) {
                 stableFrames++
             } else {
                 stableFrames = 0
